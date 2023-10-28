@@ -79,7 +79,7 @@ private:
 public:
     Consumidor(){
         a_consumir;
-        estado="Dormido";
+        estado="Durmiendo";
     }
     void set_consumir(int x){
         a_consumir=x;
@@ -111,6 +111,7 @@ public:
                 estado="Entrando";
                 break;
 
+
         }
     }
 
@@ -124,7 +125,7 @@ public:
     Productor(){
         a_producir;
         dormir=0;
-        estado="Dormido";
+        estado="Durmiendo";
     }
 
     void set_producir(int x){
@@ -149,7 +150,7 @@ public:
     void set_estado(int n){
         switch (n) {
             case 0:
-                estado="Consumiendo";
+                estado="Produciendo";
                 break;
             case 1:
                 estado="Durmiendo";
@@ -192,32 +193,50 @@ int main() {
     uniform_int_distribution<int> distribucion(min, max);
     uniform_int_distribution<int> turn(0, 1);
 
-    int tecla,dormir=distribucion(gen),haciendo=3;
-    bool ocupado=false;
+    int tecla,dormir=distribucion(gen);
+    int trabajo=2;
+    bool ocupado=true;
     Productor productor;//1
     Consumidor consumidor;//0
     Lista lista;
-    lista.set_turno(dormir%2);
-    if(dormir%2){
-        productor.set_estado(0);//Trabajando
-        consumidor.set_estado(1);//Dormido
-    }else{
-        productor.set_estado(1);//Dormido
-        consumidor.set_estado(0);//Trabajando
-    }
+    lista.set_turno(turn(gen));
+
     do{
-        lista.set_turno(turn(gen));
-        if(lista.get_turno()){
-            produce(lista,productor);
+        if(ocupado){
+            if(lista.get_turno()){
+                produce(lista,productor);
+                productor.set_estado(1);
+                ocupado=false;
+            }
+            else{
+                consume(lista,consumidor);
+                consumidor.set_estado(1);
+                ocupado=false;
+
+            }
         }
         else{
-            consume(lista,consumidor);
+            lista.set_turno(turn(gen));
+            (lista.get_turno()) ? productor.set_estado(0) : (consumidor.set_estado(0));
+            ocupado=true;
+
         }
-        system("cls");
         lista.imprimir();
-        cout<<endl<<"Turno de: ";(lista.get_turno())?(cout<<"Productor con: "<<productor.get_productor()):(cout<<"Consumidor con: "<<consumidor.get_consumidor());
+        cout<<endl;
+        switch(lista.get_turno()){
+            case 0:
+                cout<<"Consumio: "<<consumidor.get_consumidor()<<endl;
+                break;
+            case 1:
+                cout<<"Producio: "<<productor.get_productor()<<endl;
+                break;
+        }
+        cout<<"Estados:"<<endl;
+        cout<<"Productor: "<<productor.get_estado()<<endl;
+        cout<<"Consumidor: "<<consumidor.get_estado()<<endl;
         Sleep(2000);
 
+        system("cls");
 
 
 
