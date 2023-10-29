@@ -3,6 +3,12 @@
 #include <random>
 #include <windows.h>
 using namespace std;
+void print(int x, int y) {
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
 class Lista{
 private:
     vector<char>lista;
@@ -38,10 +44,10 @@ public:
     }
     void produce(int x){
         while(x>0){
-            if(productos==maximo-1){
+            if(productos==maximo){
                 break;
             }
-            if(index==maximo-1){
+            if(index==maximo){
                 index=0;
             }
             lista[index]='#';
@@ -55,7 +61,7 @@ public:
             if(productos==0){
                 break;
             }
-            if(index_c==maximo-1){
+            if(index_c==maximo){
                 index_c=0;
             }
             lista[index_c]='_';
@@ -65,9 +71,12 @@ public:
 
         }
     }
-    void imprimir(){
-        for(int i=0;i<maximo;i++){
-            cout<<lista[i];
+    void imprimir() {
+        for (int i = 0; i < maximo; i++) {
+            print(65 + (3 * i), 5);
+            cout << lista[i] << " ";
+            print(65 + (3 * i), 6);
+            cout << i+1;
         }
     }
 };
@@ -179,8 +188,7 @@ void produce(Lista& buffer,Productor& productor) {
 
     random_device rd;
     mt19937 gen(rd());
-    int min = 3, max = 5;
-    uniform_int_distribution<int> distribucion(min, max);
+    uniform_int_distribution<int> distribucion(4, 7);
     int n = distribucion(gen);
     productor.set_producir(n);
     (buffer.get_productos() + n >= buffer.get_maximo()-1)?(buffer.produce(buffer.get_maximo()-buffer.get_productos())):(buffer.produce(n));
@@ -194,12 +202,7 @@ void peticion(Lista& lista, Productor& productor, Consumidor& consumidor, bool& 
     uniform_int_distribution<int> dormir(3, 7);
 
     uniform_int_distribution<int> turn(0, 1);
-    if(productor.get_restante()==0){
-        productor.set_estado(0);
-    }
-    else if(consumidor.get_restante()==0){
-        consumidor.set_estado(0);
-    }
+
     if(ocupado) {
 
         if (productor.get_restante() == 0) {
@@ -216,12 +219,18 @@ void peticion(Lista& lista, Productor& productor, Consumidor& consumidor, bool& 
         ocupado = false;
 
     }else  {
-
+        if(productor.get_restante()==0){
+            productor.set_estado(0);
+        }
+        else if(consumidor.get_restante()==0){
+            consumidor.set_estado(0);
+        }
         ocupado = true;
 
     }
 }
 int main() {
+    system("pause");
     random_device rd;
     mt19937 gen(rd());
     int min = 3, max = 5;
