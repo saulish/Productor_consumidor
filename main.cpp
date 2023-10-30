@@ -3,6 +3,12 @@
 #include <random>
 #include <windows.h>
 using namespace std;
+void print(int x, int y) {
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
 class Lista{
 private:
     vector<char>lista;
@@ -38,10 +44,10 @@ public:
     }
     void produce(int x){
         while(x>0){
-            if(productos==maximo-1){
+            if(productos==maximo){
                 break;
             }
-            if(index==maximo-1){
+            if(index==maximo){
                 index=0;
             }
             lista[index]='#';
@@ -55,7 +61,7 @@ public:
             if(productos==0){
                 break;
             }
-            if(index_c==maximo-1){
+            if(index_c==maximo){
                 index_c=0;
             }
             lista[index_c]='_';
@@ -65,19 +71,27 @@ public:
 
         }
     }
-    void imprimir(){
-        for(int i=0;i<maximo;i++){
-            cout<<lista[i];
+    void imprimir() {
+        for (int i = 0; i < maximo; i++) {
+            print(65 + (3 * i), 5);
+            cout << lista[i] << " ";
+            print(65 + (3 * i), 6);
+            cout << i+1;
         }
+        cout<<"     Hay: "<<productos;
     }
 };
 class Consumidor{
 private:
     int a_consumir=0;
-    int dormir=0;
+    int dormir=1;
     string estado;
 public:
     Consumidor(){
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<int> mimir(3, 5);
+        dormir=mimir(gen);
         a_consumir;
         estado="Durmiendo";
     }
@@ -123,8 +137,11 @@ private:
     string estado;
 public:
     Productor(){
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<int> mimir(3, 5);
         a_producir;
-        dormir=0;
+        dormir=mimir(gen);
         estado="Durmiendo";
     }
 
@@ -179,62 +196,114 @@ void produce(Lista& buffer,Productor& productor) {
 
     random_device rd;
     mt19937 gen(rd());
-    int min = 3, max = 5;
-    uniform_int_distribution<int> distribucion(min, max);
+    uniform_int_distribution<int> distribucion(4, 7);
     int n = distribucion(gen);
     productor.set_producir(n);
     (buffer.get_productos() + n >= buffer.get_maximo()-1)?(buffer.produce(buffer.get_maximo()-buffer.get_productos())):(buffer.produce(n));
 
 }
-int main() {
+void peticion_consumidor(Lista& lista, Consumidor& consumidor, bool& libre){
     random_device rd;
     mt19937 gen(rd());
     int min = 3, max = 5;
     uniform_int_distribution<int> distribucion(min, max);
+    uniform_int_distribution<int> dormir(3, 7);
+    uniform_int_distribution<int> turn(0, 1);
+    consume(lista,consumidor);
+    consumidor.set_dormir(dormir(gen));
+    consumidor.set_estado(1);
+}
+void peticion_productor(Lista& lista, Productor& productor, bool& libre){
+    random_device rd;
+    mt19937 gen(rd());
+    int min = 3, max = 5;
+    uniform_int_distribution<int> distribucion(min, max);
+    uniform_int_distribution<int> dormir(3, 7);
+    uniform_int_distribution<int> turn(0, 1);
+    produce(lista,productor);
+    productor.set_dormir(dormir(gen));
+    productor.set_estado(1);
+
+
+}
+int main() {
+    system("pause");
+    random_device rd;
+    mt19937 gen(rd());
+    int min = 3, max = 5;
+    uniform_int_distribution<int> distribucion(min, max);
+    uniform_int_distribution<int> dormir(5, 8);
+
     uniform_int_distribution<int> turn(0, 1);
 
-    int tecla,dormir=distribucion(gen);
-    int trabajo=2;
-    bool ocupado=true;
+    int tecla,aux=0,turno;
+    bool libre=true;
+
     Productor productor;//1
     Consumidor consumidor;//0
     Lista lista;
     lista.set_turno(turn(gen));
 
     do{
-        if(ocupado){
-            if(lista.get_turno()){
-                produce(lista,productor);
+        turno= turn(gen);
+        if(aux==1){
+            aux=0;
+            libre=true;
+        }
+        if(productor.get_restante()!=0)productor.reduce_dormir();
+
+        if(consumidor.get_restante()!=0)consumidor.reduce_dormir();
+
+        if(productor.get_restante()==2){
+            productor.set_estado(2);
+        }
+        else if(productor.get_restante()==1){
+            if(productor.get_restante()==consumidor.get_restante() && turno){
+                productor.set_dormir(dormir(gen));
                 productor.set_estado(1);
-                ocupado=false;
+            }else{
+                productor.set_estado(0);
             }
-            else{
-                consume(lista,consumidor);
+        }
+        else if(productor.get_restante()==0 && libre){
+            libre=false;
+            aux++;
+            peticion_productor(lista,productor,libre);
+        }
+
+        if(consumidor.get_restante()==2){
+            consumidor.set_estado(2);
+
+        }
+        else if(consumidor.get_restante()==1){
+            if(consumidor.get_restante()==productor.get_restante() && !turno){
+                consumidor.set_dormir(dormir(gen));
                 consumidor.set_estado(1);
-                ocupado=false;
-
+            }else{
+                consumidor.set_estado(0);
             }
-        }
-        else{
-            lista.set_turno(turn(gen));
-            (lista.get_turno()) ? productor.set_estado(0) : (consumidor.set_estado(0));
-            ocupado=true;
+
 
         }
+        else if(consumidor.get_restante()==0 && libre){
+            libre=false;
+            aux++;
+            peticion_consumidor(lista,consumidor,libre);
+        }
+
+
+
+
         lista.imprimir();
         cout<<endl;
-        switch(lista.get_turno()){
-            case 0:
-                cout<<"Consumio: "<<consumidor.get_consumidor()<<endl;
-                break;
-            case 1:
-                cout<<"Producio: "<<productor.get_productor()<<endl;
-                break;
-        }
+
         cout<<"Estados:"<<endl;
-        cout<<"Productor: "<<productor.get_estado()<<endl;
-        cout<<"Consumidor: "<<consumidor.get_estado()<<endl;
-        Sleep(2000);
+        cout<<"Productor: "<<productor.get_estado();
+        if(productor.get_estado()=="Durmiendo")cout<<" "<<productor.get_restante()-2;
+        cout<<endl<<"Consumidor: "<<consumidor.get_estado();
+        if(consumidor.get_estado()=="Durmiendo")cout<<" "<<consumidor.get_restante()-2<<endl;
+
+        Sleep(1000);
 
         system("cls");
 
@@ -250,7 +319,6 @@ int main() {
 
 
     cout<<"Hello world"<<endl;
-    int xd;
-    cin >>xd;
+
     return 0;
 }
