@@ -78,15 +78,20 @@ public:
             print(65 + (3 * i), 6);
             cout << i+1;
         }
+        cout<<"     Hay: "<<productos;
     }
 };
 class Consumidor{
 private:
     int a_consumir=0;
-    int dormir=0;
+    int dormir=1;
     string estado;
 public:
     Consumidor(){
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<int> mimir(3, 5);
+        dormir=mimir(gen);
         a_consumir;
         estado="Durmiendo";
     }
@@ -132,8 +137,11 @@ private:
     string estado;
 public:
     Productor(){
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<int> mimir(3, 5);
         a_producir;
-        dormir=0;
+        dormir=mimir(gen);
         estado="Durmiendo";
     }
 
@@ -194,40 +202,29 @@ void produce(Lista& buffer,Productor& productor) {
     (buffer.get_productos() + n >= buffer.get_maximo()-1)?(buffer.produce(buffer.get_maximo()-buffer.get_productos())):(buffer.produce(n));
 
 }
-void peticion(Lista& lista, Productor& productor, Consumidor& consumidor, bool& ocupado){
+void peticion_consumidor(Lista& lista, Consumidor& consumidor, bool& libre){
     random_device rd;
     mt19937 gen(rd());
     int min = 3, max = 5;
     uniform_int_distribution<int> distribucion(min, max);
     uniform_int_distribution<int> dormir(3, 7);
-
     uniform_int_distribution<int> turn(0, 1);
+    consume(lista,consumidor);
+    consumidor.set_dormir(dormir(gen));
+    consumidor.set_estado(1);
+}
+void peticion_productor(Lista& lista, Productor& productor, bool& libre){
+    random_device rd;
+    mt19937 gen(rd());
+    int min = 3, max = 5;
+    uniform_int_distribution<int> distribucion(min, max);
+    uniform_int_distribution<int> dormir(3, 7);
+    uniform_int_distribution<int> turn(0, 1);
+    produce(lista,productor);
+    productor.set_dormir(dormir(gen));
+    productor.set_estado(1);
 
-    if(ocupado) {
 
-        if (productor.get_restante() == 0) {
-            produce(lista, productor);
-
-            productor.set_estado(1);
-            productor.set_dormir(dormir(gen));
-        } else if (consumidor.get_restante() == 0) {
-            consume(lista, consumidor);
-            consumidor.set_estado(1);
-            consumidor.set_dormir(dormir(gen));
-
-        }
-        ocupado = false;
-
-    }else  {
-        if(productor.get_restante()==0){
-            productor.set_estado(0);
-        }
-        else if(consumidor.get_restante()==0){
-            consumidor.set_estado(0);
-        }
-        ocupado = true;
-
-    }
 }
 int main() {
     system("pause");
@@ -235,12 +232,12 @@ int main() {
     mt19937 gen(rd());
     int min = 3, max = 5;
     uniform_int_distribution<int> distribucion(min, max);
-    uniform_int_distribution<int> dormir(3, 7);
+    uniform_int_distribution<int> dormir(5, 8);
 
     uniform_int_distribution<int> turn(0, 1);
 
-    int tecla;
-    bool ocupado=true;
+    int tecla,aux=0,turno;
+    bool libre=true;
 
     Productor productor;//1
     Consumidor consumidor;//0
@@ -248,30 +245,63 @@ int main() {
     lista.set_turno(turn(gen));
 
     do{
-        peticion(lista,productor,consumidor,ocupado);
+        turno= turn(gen);
+        if(aux==1){
+            aux=0;
+            libre=true;
+        }
+        if(productor.get_restante()!=0)productor.reduce_dormir();
+
+        if(consumidor.get_restante()!=0)consumidor.reduce_dormir();
+
+        if(productor.get_restante()==2){
+            productor.set_estado(2);
+        }
+        else if(productor.get_restante()==1){
+            if(productor.get_restante()==consumidor.get_restante() && turno){
+                productor.set_dormir(dormir(gen));
+                productor.set_estado(1);
+            }else{
+                productor.set_estado(0);
+            }
+        }
+        else if(productor.get_restante()==0 && libre){
+            libre=false;
+            aux++;
+            peticion_productor(lista,productor,libre);
+        }
+
+        if(consumidor.get_restante()==2){
+            consumidor.set_estado(2);
+
+        }
+        else if(consumidor.get_restante()==1){
+            if(consumidor.get_restante()==productor.get_restante() && !turno){
+                consumidor.set_dormir(dormir(gen));
+                consumidor.set_estado(1);
+            }else{
+                consumidor.set_estado(0);
+            }
+
+
+        }
+        else if(consumidor.get_restante()==0 && libre){
+            libre=false;
+            aux++;
+            peticion_consumidor(lista,consumidor,libre);
+        }
+
+
 
 
         lista.imprimir();
         cout<<endl;
-        if(consumidor.get_restante()!=0) {
-            consumidor.reduce_dormir();
-            if(consumidor.get_restante()==0 && !ocupado){
-                consumidor.set_estado(2);
 
-            }
-        }
-        if(productor.get_restante()!=0){
-            productor.reduce_dormir();
-            if(productor.get_restante()==0 && !ocupado){
-                productor.set_estado(2);
-
-            }
-        }
         cout<<"Estados:"<<endl;
         cout<<"Productor: "<<productor.get_estado();
-        if(productor.get_estado()=="Durmiendo")cout<<" "<<productor.get_restante();
+        if(productor.get_estado()=="Durmiendo")cout<<" "<<productor.get_restante()-2;
         cout<<endl<<"Consumidor: "<<consumidor.get_estado();
-        if(consumidor.get_estado()=="Durmiendo")cout<<" "<<consumidor.get_restante()<<endl;
+        if(consumidor.get_estado()=="Durmiendo")cout<<" "<<consumidor.get_restante()-2<<endl;
 
         Sleep(1000);
 
